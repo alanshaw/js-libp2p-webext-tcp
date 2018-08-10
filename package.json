@@ -1,0 +1,34 @@
+{
+  "name": "libp2p-webext-tcp",
+  "version": "0.0.0",
+  "description": "libp2p TCP transport for web extensions",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "IPFS",
+    "webextension",
+    "webext",
+    "TCP",
+    "libdweb",
+    "browser",
+    "transport",
+    "libp2p"
+  ],
+  "author": "Alan Shaw",
+  "license": "MIT",
+  "dependencies": {
+    "debug": "^3.1.0",
+    "events": "^3.0.0",
+    "interface-connection": "^0.3.2",
+    "pull-stream": "^3.6.8"
+  },
+  "standard": {
+    "parser": "babel-eslint"
+  },
+  "devDependencies": {
+    "babel-eslint": "^8.2.6",
+    "standard": "^11.0.1"
+  }
+}
