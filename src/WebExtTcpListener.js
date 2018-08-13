@@ -3,8 +3,8 @@
 
 const { EventEmitter } = require('events')
 const log = require('debug')('libp2p:webext-tcp:listener')
-const pull = require('pull-stream')
 const { Connection } = require('interface-connection')
+const Multiaddr = require('multiaddr')
 const noop = require('./noop')
 
 class WebExtTcpListener extends EventEmitter {
@@ -29,10 +29,12 @@ class WebExtTcpListener extends EventEmitter {
       return cb(err)
     }
 
-    this._server = server
-    this._addrs = [addr]
+    log(server.address)
 
-    log(`listening ${addr}`, server)
+    this._server = server
+    this._addrs = [Multiaddr(`/ip4/${server.address.host}/tcp/${server.address.port}`)]
+
+    log(`listening ${this._addrs[0]}`)
     cb()
     this.emit('listening')
 
