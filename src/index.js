@@ -19,6 +19,9 @@ class DummyTransport {
     if (typeof opts === 'function') handler = opts
     return new DummyListener()
   }
+  filter (addrs) {
+    return []
+  }
 }
 
 class DummyListener extends EventEmitter {

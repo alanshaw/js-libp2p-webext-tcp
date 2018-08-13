@@ -21,18 +21,19 @@ class WebExtTcpListener extends EventEmitter {
     cb = cb || noop
 
     let server
+    let port
 
     try {
-      const { port } = addr.nodeAddress()
+      port = parseInt(addr.nodeAddress().port)
       server = await browser.TCPSocket.listen({ port })
     } catch (err) {
       return cb(err)
     }
 
-    log(server.address)
-
     this._server = server
-    this._addrs = [Multiaddr(`/ip4/${server.address.host}/tcp/${server.address.port}`)]
+    // TODO use server.address to assertain host
+    this._addrs = [new Multiaddr(`/ip4/${addr.nodeAddress().address}/tcp/${port}`)]
+    // this._addrs = [Multiaddr(`/ip4/${server.address.host}/tcp/${port}`)]
 
     log(`listening ${this._addrs[0]}`)
     cb()
