@@ -37,7 +37,7 @@ module.exports = (id, client) => {
 
     try {
       data = await client.read()
-      log('read', data)
+      log('read', Buffer.from(data))
     } catch (err) {
       log('read error', err)
       return cb(err)
