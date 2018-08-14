@@ -3,7 +3,6 @@
 
 const { Connection } = require('interface-connection')
 const log = require('debug')('libp2p:webext-tcp:transport')
-const pull = require('pull-stream')
 const mafmt = require('mafmt')
 const noop = require('./noop')
 const WebExtTcpListener = require('./WebExtTcpListener')
@@ -30,23 +29,45 @@ class WebExtTcpTransport {
         return client
       })
       .then(client => {
-        const stream = pull.asyncMap(async (data, cb) => {
-          try {
-            await client.write(data)
-          } catch (err) {
-            return cb(err)
+        const stream = {
+          sink: read => {
+            read(null, async function next (end, data) {
+              if (end === true) return
+              if (end) throw end
+
+              try {
+                log('write', data)
+                // TCPClient.write accepts an ArrayBuffer
+                const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
+                await client.write(buffer)
+              } catch (err) {
+                log('write error', err)
+                return read(err)
+              }
+
+              read(null, next)
+            })
+          },
+          source: async (end, cb) => {
+            if (end) {
+              if (end === true) log(`stream end ${addr}`)
+              else log(`stream error ${addr}`, end)
+              return client.close()
+            }
+
+            let data
+
+            try {
+              data = await client.read()
+              log('read', data)
+            } catch (err) {
+              log('read error', err)
+              return cb(err)
+            }
+
+            cb(null, data)
           }
-
-          let res
-
-          try {
-            res = await client.read()
-          } catch (err) {
-            return cb(err)
-          }
-
-          cb(null, res)
-        })
+        }
 
         conn.setInnerConn(stream)
         cb()
