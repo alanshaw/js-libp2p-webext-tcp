@@ -6,6 +6,7 @@ const log = require('debug')('libp2p:webext-tcp:listener')
 const { Connection } = require('interface-connection')
 const Multiaddr = require('multiaddr')
 const noop = require('./noop')
+const ClientSocketPullStream = require('./ClientSocketPullStream')
 
 class WebExtTcpListener extends EventEmitter {
   constructor (handler) {
@@ -46,7 +47,9 @@ class WebExtTcpListener extends EventEmitter {
 
   _onConnect (client) {
     log('connection', client)
-    const conn = new Connection()
+    const addr = `/ip${client.host.includes(':') ? 6 : 4}/${client.host}/tcp/${client.port}`
+    const stream = ClientSocketPullStream(`listened:${addr}`, client)
+    const conn = new Connection(stream)
     this._handler(conn)
     this.emit('connection', conn)
   }

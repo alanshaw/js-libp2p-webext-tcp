@@ -6,6 +6,7 @@ const log = require('debug')('libp2p:webext-tcp:transport')
 const mafmt = require('mafmt')
 const noop = require('./noop')
 const WebExtTcpListener = require('./WebExtTcpListener')
+const ClientSocketPullStream = require('./ClientSocketPullStream')
 
 class WebExtTcpTransport {
   dial (addr, opts, cb) {
@@ -29,46 +30,7 @@ class WebExtTcpTransport {
         return client
       })
       .then(client => {
-        const stream = {
-          sink: read => {
-            read(null, async function next (end, data) {
-              if (end === true) return
-              if (end) throw end
-
-              try {
-                log('write', data)
-                // TCPClient.write accepts an ArrayBuffer
-                const buffer = data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength)
-                await client.write(buffer)
-              } catch (err) {
-                log('write error', err)
-                return read(err)
-              }
-
-              read(null, next)
-            })
-          },
-          source: async (end, cb) => {
-            if (end) {
-              if (end === true) log(`stream end ${addr}`)
-              else log(`stream error ${addr}`, end)
-              return client.close()
-            }
-
-            let data
-
-            try {
-              data = await client.read()
-              log('read', data)
-            } catch (err) {
-              log('read error', err)
-              return cb(err)
-            }
-
-            cb(null, data)
-          }
-        }
-
+        const stream = ClientSocketPullStream(`dialed:${addr}`, client)
         conn.setInnerConn(stream)
         cb()
       })
