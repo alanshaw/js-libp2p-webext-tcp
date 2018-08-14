@@ -23,7 +23,7 @@ class WebExtTcpTransport {
     const { address: host, port } = addr.nodeAddress()
     const conn = new Connection()
 
-    browser.TCPSocket.connect({ host, port })
+    browser.TCPSocket.connect({ host, port: parseInt(port) })
       .then(async client => {
         await client.opened
         log(`connected ${addr}`)
