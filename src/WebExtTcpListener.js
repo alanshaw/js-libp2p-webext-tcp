@@ -9,11 +9,17 @@ const ClientSocketPullStream = require('./ClientSocketPullStream')
 const Addrs = require('./Addrs')
 
 class WebExtTcpListener extends EventEmitter {
-  constructor (handler) {
+  constructor (handler, options) {
     super()
+    options = options || {}
     this._handler = handler
     this._server = null
-    this._addrs = new Addrs()
+    this._addr = null
+    this._interfaceAddrs = new Addrs()
+
+    if (options.interfaceAddrs) {
+      this.setInterfaceAddrs(options.interfaceAddrs)
+    }
   }
 
   async listen (addr, cb) {
@@ -25,13 +31,14 @@ class WebExtTcpListener extends EventEmitter {
     let port
 
     try {
-      port = parseInt(addr.nodeAddress().port)
+      port = parseInt(addr.toString().replace('/tcp/', ''))
       server = await browser.TCPSocket.listen({ port })
     } catch (err) {
       return cb(err)
     }
 
     this._server = server
+    this._addr = addr
 
     log(`listening ${addr}`)
     cb()
@@ -51,15 +58,24 @@ class WebExtTcpListener extends EventEmitter {
     this.emit('connection', conn)
   }
 
-  setAddrs (addrs) {
-    this._addrs.set(addrs)
-    return this
+  setInterfaceAddrs (addrs) {
+    this._interfaceAddrs.set(addrs)
   }
 
   getAddrs (cb) {
-    const addrs = this._addrs.get()
-    if (!addrs.length) return this._addrs.once('addrs', addrs => cb(null, addrs))
-    setTimeout(() => cb(null, addrs))
+    if (!this._addr) return setTimeout(() => cb(null, []))
+
+    const ifAddrs = this._interfaceAddrs.get()
+    const encapsulateAll = addrs => addrs.map(a => a.encapsulate(this._addr))
+
+    // If we have no interface addresses yet, wait for them to come in
+    if (!ifAddrs.length) {
+      return this._interfaceAddrs.once('addrs', addrs => {
+        cb(null, encapsulateAll(addrs))
+      })
+    }
+
+    setTimeout(() => cb(null, encapsulateAll(ifAddrs)))
   }
 
   async close (opts, cb) {
@@ -70,19 +86,23 @@ class WebExtTcpListener extends EventEmitter {
       opts = opts || {}
     }
 
+    this._addr = null
+    this._interfaceAddrs = new Addrs()
+
     if (this._server) {
+      const server = this._server
+      this._server = null
+
       try {
-        await this._server.close()
-        this._server = null
+        await server.close()
       } catch (err) {
+        setTimeout(() => this.emit('close', err))
         return cb(err)
       }
     }
 
-    this._addrs = new Addrs()
-
+    setTimeout(() => this.emit('close'))
     cb()
-    this.emit('close')
   }
 }
 

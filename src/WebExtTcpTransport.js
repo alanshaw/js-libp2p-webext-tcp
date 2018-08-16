@@ -8,6 +8,11 @@ const WebExtTcpListener = require('./WebExtTcpListener')
 const ClientSocketPullStream = require('./ClientSocketPullStream')
 
 class WebExtTcpTransport {
+  constructor () {
+    this._listeners = []
+    this._interfaceAddrs = []
+  }
+
   dial (addr, opts, cb) {
     log(`dial ${addr}`)
 
@@ -38,34 +43,37 @@ class WebExtTcpTransport {
     return conn
   }
 
-  createListener (opts, handler) {
-    if (typeof opts === 'function') {
-      handler = opts
-      opts = {}
+  createListener (options, handler) {
+    if (typeof options === 'function') {
+      handler = options
+      options = {}
     }
 
-    opts = opts || {}
+    options = options || {}
+    options.interfaceAddrs = options.interfaceAddrs || this._interfaceAddrs
 
-    return new WebExtTcpListener(handler, opts)
+    const listener = new WebExtTcpListener(handler, options)
+
+    listener.on('close', () => {
+      this._listeners = this._listeners.filter(l => l !== listener)
+    })
+
+    this._listeners = this._listeners.concat(listener)
+
+    return listener
+  }
+
+  // Set the available interface addresses
+  // These are all /ip4/x or /ip6/x style multiaddrs (no port)
+  setInterfaceAddrs (addrs) {
+    addrs = Array.from(addrs)
+    this._interfaceAddrs = addrs
+    this._listeners.forEach(l => l.setInterfaceAddrs(addrs))
   }
 
   filter (addrs) {
     addrs = Array.isArray(addrs) ? addrs : [addrs]
-
-    return addrs.filter(addr => {
-      const protoNames = addr.protoNames()
-
-      if (protoNames.includes('p2p-circuit')) {
-        return false
-      }
-
-      if (protoNames.includes('ipfs')) {
-        addr = addr.decapsulate('ipfs')
-      }
-
-      const addrStr = addr.toString()
-      return addrStr.startsWith('/ip4/0.0.0.0') || addrStr.startsWith('/ip6/::')
-    })
+    return addrs.filter(addr => /\/tcp\/[0-9]+/.test(addr.toString()))
   }
 }
 
