@@ -17,7 +17,7 @@ class WebExtTcpListener extends EventEmitter {
     this._addr = null
     this._interfaceAddrs = new Addrs()
 
-    if (options.interfaceAddrs) {
+    if (options.interfaceAddrs && options.interfaceAddrs.length) {
       this.setInterfaceAddrs(options.interfaceAddrs)
     }
   }
@@ -59,6 +59,7 @@ class WebExtTcpListener extends EventEmitter {
   }
 
   setInterfaceAddrs (addrs) {
+    log('interface addrs', addrs.map(a => a.toString()))
     this._interfaceAddrs.set(addrs)
   }
 
