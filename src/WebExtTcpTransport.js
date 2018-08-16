@@ -3,7 +3,6 @@
 
 const { Connection } = require('interface-connection')
 const log = require('debug')('libp2p:webext-tcp:transport')
-const mafmt = require('mafmt')
 const noop = require('./noop')
 const WebExtTcpListener = require('./WebExtTcpListener')
 const ClientSocketPullStream = require('./ClientSocketPullStream')
@@ -53,18 +52,19 @@ class WebExtTcpTransport {
   filter (addrs) {
     addrs = Array.isArray(addrs) ? addrs : [addrs]
 
-    return addrs.filter(ma => {
-      const protoNames = ma.protoNames()
+    return addrs.filter(addr => {
+      const protoNames = addr.protoNames()
 
       if (protoNames.includes('p2p-circuit')) {
         return false
       }
 
       if (protoNames.includes('ipfs')) {
-        ma = ma.decapsulate('ipfs')
+        addr = addr.decapsulate('ipfs')
       }
 
-      return mafmt.TCP.matches(ma)
+      const addrStr = addr.toString()
+      return addrStr.startsWith('/ip4/0.0.0.0') || addrStr.startsWith('/ip6/::')
     })
   }
 }

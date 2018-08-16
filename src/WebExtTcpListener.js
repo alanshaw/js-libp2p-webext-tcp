@@ -4,16 +4,16 @@
 const { EventEmitter } = require('events')
 const log = require('debug')('libp2p:webext-tcp:listener')
 const { Connection } = require('interface-connection')
-const Multiaddr = require('multiaddr')
 const noop = require('./noop')
 const ClientSocketPullStream = require('./ClientSocketPullStream')
+const Addrs = require('./Addrs')
 
 class WebExtTcpListener extends EventEmitter {
   constructor (handler) {
     super()
     this._handler = handler
     this._server = null
-    this._addrs = []
+    this._addrs = new Addrs()
   }
 
   async listen (addr, cb) {
@@ -32,11 +32,8 @@ class WebExtTcpListener extends EventEmitter {
     }
 
     this._server = server
-    // TODO use server.address to assertain host
-    this._addrs = [new Multiaddr(`/ip4/${addr.nodeAddress().address}/tcp/${port}`)]
-    // this._addrs = [Multiaddr(`/ip4/${server.address.host}/tcp/${port}`)]
 
-    log(`listening ${this._addrs[0]}`)
+    log(`listening ${addr}`)
     cb()
     this.emit('listening')
 
@@ -54,8 +51,15 @@ class WebExtTcpListener extends EventEmitter {
     this.emit('connection', conn)
   }
 
+  setAddrs (addrs) {
+    this._addrs.set(addrs)
+    return this
+  }
+
   getAddrs (cb) {
-    cb(null, this._addrs)
+    const addrs = this._addrs.get()
+    if (!addrs.length) return this._addrs.once('addrs', addrs => cb(null, addrs))
+    setTimeout(() => cb(null, addrs))
   }
 
   async close (opts, cb) {
@@ -75,7 +79,7 @@ class WebExtTcpListener extends EventEmitter {
       }
     }
 
-    this._addrs = []
+    this._addrs = new Addrs()
 
     cb()
     this.emit('close')
